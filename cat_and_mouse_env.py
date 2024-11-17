@@ -51,6 +51,8 @@ class CatAndMouseEnv(gym.Env):
             reward = -2
         reward = 1
         
+        # 문 열려있을때만 움직이게 
+        
         self.cat_position = self.cat_position + 1
         if self.cat_position == 6:
             self.cat_position = 3
@@ -95,7 +97,7 @@ class CatAndMouseEnv(gym.Env):
         1 = Enable = open
         0 = Disable = close
     '''
-    def step(self, cat_action, mouse_action):
+    def step(self, action):
         """
         Take a step in the environment with the given actions for the cat and mouse.
         Args:
@@ -109,10 +111,10 @@ class CatAndMouseEnv(gym.Env):
         """
         terminated = False
         
-        cat_reward = self.cat_move(self, cat_action)
-        mouse_reward = self.mouse_move(self, mouse_action)
+        cat_reward = self.cat_move(self)
+        mouse_reward = self.mouse_move(self)
         
-        if self.cat_position == 3 and  self.mouse_position == 3:
+        if self.cat_position == 3 and self.mouse_position == 3:
             terminated = True
             cat_reward = -10
             mouse_reward = -10
