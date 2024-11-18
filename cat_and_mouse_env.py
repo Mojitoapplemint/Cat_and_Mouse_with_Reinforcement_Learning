@@ -22,6 +22,21 @@ class CatAndMouseEnv(gym.Env):
         assert render_mode is None or render_mode in self.metadata['render.modes']
         self.render_mode = render_mode
     
+    def update_door(self, action):
+        cat_reward = 0
+        mouse_reward = 0
+        
+        for i in range(3):
+            if self.close_door(i, action[i]):
+                mouse_reward -= 2
+        
+        for i in range(3, 6):
+            if self.close_door(i, action[i]):
+                cat_reward -= 2
+                
+        return cat_reward, mouse_reward
+        
+    
     def close_door(self, door_id, action):
         """
         Close or open a door based on the action.
@@ -39,42 +54,24 @@ class CatAndMouseEnv(gym.Env):
         self.doors[door_id] = 1
         return False
         
-    def cat_move(self, cat_action:dict):
-        """
-        Move the cat and update the environment state.
-        Args:
-            cat_action (dict): A dictionary containing the cat's action with keys "door_id" and "action".
-        Returns:
-            int: The reward for the cat's action.
-        """
-        if self.close_door(cat_action.get("door_id"), cat_action.get("action")):
-            reward = -2
-        reward = 1
+    def cat_move(self):
         
-        # 문 열려있을때만 움직이게 
+        # 문 열려있을때만 움직이게, 안 열렸으면 return 0
         
         self.cat_position = self.cat_position + 1
         if self.cat_position == 6:
             self.cat_position = 3
+        return 1
             
-        return reward
     
-    def mouse_move(self, mouse_action:dict):
-        """
-        Move the mouse and update the environment state.
-        Args:
-            mouse_action (dict): A dictionary containing the mouse's action with keys "door_id" and "action".
-        Returns:
-            int: The reward for the mouse's action.
-        """
-        if self.close_door(mouse_action.get("door_id"), mouse_action.get("action")):
-            reward = -2
-        reward = 1
+    def mouse_move(self):
+
+        # 문 열려있을때만 움직이게, 안 열렸으면 return 0
         
         self.mouse_position = self.mouse_position - 1
         if self.mouse_position == 0:
             self.mouse_position = 3
-        return reward
+        return 1
         
         
     def reset(self):
@@ -111,8 +108,10 @@ class CatAndMouseEnv(gym.Env):
         """
         terminated = False
         
-        cat_reward = self.cat_move(self)
-        mouse_reward = self.mouse_move(self)
+        cat_reward, mouse_reward = self.update_door(action)
+        
+        cat_reward += self.cat_move(self)
+        mouse_reward += self.mouse_move(self)
         
         if self.cat_position == 3 and self.mouse_position == 3:
             terminated = True
@@ -133,7 +132,7 @@ class CatAndMouseEnv(gym.Env):
         if self.cat_position == 3:
             cat=5
 
-        grid = [" " for i in range(6)]
+        grid = [" " for _ in range(6)]
         grid[cat] = "C"
         grid[mouse] = "M"
         b = []
