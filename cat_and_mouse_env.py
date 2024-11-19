@@ -56,22 +56,40 @@ class CatAndMouseEnv(gym.Env):
         
     def cat_move(self):
         
-        # 문 열려있을때만 움직이게, 안 열렸으면 return 0
+        if self.cat_position == 3:
+            door_num = 5 # c3
+            
+        if self.cat_position == 4:
+            door_num = 3 # c1
         
-        self.cat_position = self.cat_position + 1
-        if self.cat_position == 6:
-            self.cat_position = 3
-        return 1
+        if self.cat_position == 5:
+            door_num = 4 # c2
+        
+        if self.doors[door_num] == 1:        
+            self.cat_position = self.cat_position + 1
+            if self.cat_position == 6:
+                self.cat_position = 3
+            return 1
+        return 0
             
     
     def mouse_move(self):
-
-        # 문 열려있을때만 움직이게, 안 열렸으면 return 0
         
-        self.mouse_position = self.mouse_position - 1
-        if self.mouse_position == 0:
-            self.mouse_position = 3
-        return 1
+        if self.mouse_position == 1:
+            door_num = 1 # m2
+            
+        if self.mouse_position == 2:
+            door_num = 0 # m1
+        
+        if self.mouse_position == 3:
+            door_num = 2 # m3
+
+        if self.doors[door_num] == 1:        
+            self.mouse_position = self.mouse_position - 1
+            if self.mouse_position == 0:
+                self.mouse_position = 3
+            return 1
+        return 0
         
         
     def reset(self):
