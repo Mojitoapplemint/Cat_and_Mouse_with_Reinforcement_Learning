@@ -114,7 +114,7 @@ for episode in range(epoch):
         
         action = get_action(net_policy)
         
-        observation, reward, terminated, info = env.step(action)
+        observation, cat_reward, mouse_reward, terminated, info = env.step(action)
         
         old_cat_state = new_cat_state
         new_cat_state = cat_observation_to_state(observation)

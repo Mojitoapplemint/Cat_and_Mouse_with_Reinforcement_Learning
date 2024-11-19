@@ -138,7 +138,7 @@ class CatAndMouseEnv(gym.Env):
         
         info = {"doors":self.doors}
 
-        return (self.cat_position, self.mouse_position), (cat_reward, mouse_reward), terminated, info
+        return (self.cat_position, self.mouse_position), cat_reward, mouse_reward, terminated, info
         
         
     def render(self):
