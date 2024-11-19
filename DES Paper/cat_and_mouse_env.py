@@ -126,19 +126,19 @@ class CatAndMouseEnv(gym.Env):
         """
         terminated = False
         
-        cat_reward, mouse_reward = self.update_door(action)
+        cat_r1, mouse_r1 = self.update_door(action)
         
-        cat_reward += self.cat_move(self)
-        mouse_reward += self.mouse_move(self)
+        cat_r2 = self.cat_move(self)
+        mouse_r2 = self.mouse_move(self)
         
         if self.cat_position == 3 and self.mouse_position == 3:
             terminated = True
-            cat_reward = -10
-            mouse_reward = -10
+            cat_r2 = -10
+            mouse_r2 = -10
         
         info = {"doors":self.doors}
 
-        return (self.cat_position, self.mouse_position), cat_reward, mouse_reward, terminated, info
+        return (self.cat_position, self.mouse_position), cat_r1, cat_r2, mouse_r1, mouse_r2, terminated, info
         
         
     def render(self):

@@ -75,8 +75,10 @@ q_mouse = np.zeros(shape=(6,6))   # Observation: 개수 줄여 / Action: [m1 ON,
 q_cat = np.zeros(shape=(6,6))     # Observation: 개수 줄여 / Action: [c1 ON, c1 OFF, c2 ON, c2 OFF, c3 ON, c3 OFF]
 
 epoch=1000000
-learning_rate=0.9
-discount_factor = 0.9
+alpha = 0.9
+belta = 0.9
+gamma = 0.9
+delta = 0.9
 epsilon = 0.9
 
 for episode in range(epoch):
@@ -85,8 +87,8 @@ for episode in range(epoch):
         
     t_mouse = 0
     t_cat = 0
-    r1_mouse = 0
-    r1_cat = 0
+    R1_mouse = 0
+    R1_cat = 0
     eta_mouse = 0
     eta_cat=0    
     
@@ -101,27 +103,44 @@ for episode in range(epoch):
     while (not terminated):
         exploration = np.random.random > epsilon
         
+        # Get control policies for each SuperVisor
         cat_policy = get_cat_policy(new_cat_state, exploration)
         mouse_policy = get_mouse_policy(new_mouse_state, exploration)
         
+        # Get net policy
         net_policy = get_net_policy(cat_policy, mouse_policy)
         
-        
+        # If net_policy is empty, then continue
         if len(net_policy)==0:
             print(f"cat_policy:{cat_policy}, mouse_policy:{mouse_policy}")
             count +=1
             continue
         
+        # Get action from net policy
         action = get_action(net_policy)
         
-        observation, cat_reward, mouse_reward, terminated, info = env.step(action)
+        # Send Action to DES
+        observation, cat_r1, cat_r2, mouse_r1, mouse_r2, terminated, info = env.step(action)
         
+        # Storing old states
         old_cat_state = new_cat_state
-        new_cat_state = cat_observation_to_state(observation)
-        
         old_mouse_state = new_mouse_state
+        
+        # Getting new states
+        new_cat_state = cat_observation_to_state(observation)
         new_mouse_state = mouse_observation_to_state(observation)
         
+        # Updating T
+        t_cat = t_cat+alpha[cat_r2+gamma*np.max(q_cat[new_cat_state])-t_cat]
+        t_mouse = t_mouse+alpha[mouse_r2+gamma*np.max(q_mouse[new_mouse_state])-t_mouse]
+        
+        # Updating R1
+        R1_cat = R1_cat + belta*(cat_r1-R1_cat)
+        R1_mouse = R1_mouse + belta*(mouse_r1-R1_mouse)
+        
+        # Updating eta
+        
+        # Updating Q
         
         if count == 20:
             terminated = True
