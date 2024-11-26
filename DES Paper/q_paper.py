@@ -53,6 +53,15 @@ def policy_num_to_binary_list(policy_num):
         binary_int = binary_int//10
     return binary_list
 
+def local_policy_to_binary_list(local_policy):
+    
+    return
+    
+
+def binary_list_to_policy_num(binary_list):
+    binary = 100*binary_list[0]+10*binary_list[1]+binary_list[2]
+    return int(str(binary), 2)
+    
 # [m1, m2, m3, c1, c2, c3]
 # [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
@@ -77,26 +86,24 @@ def init_cat_eta():
     return init_cat_eta
 
 def mouse_observation_to_state(observation):
-    return MOUSE_STATES.get(observation)
+    return MOUSE_STATES.get(tuple(observation))
+
+def cat_observation_to_state(observation):
+    return CAT_STATES.get(tuple(observation))
 
 def get_mouse_policy(q_mouse, curr_state, epsilon)->list:
     if np.random.random()>epsilon:
-        policy_num = np.argmax(q_mouse[curr_state])
-    else:
         policy_num = np.random.randint(0,8)
+    else:
+        policy_num = np.argmax(q_mouse[curr_state])
     binary_list = policy_num_to_binary_list(policy_num)+[1,1,1]
     return [DOORS[i] for i in range(6) if binary_list[i]==1]
 
-
-def cat_observation_to_state(observation):
-    return CAT_STATES.get(observation)
-
-
 def get_cat_policy(q_cat, curr_state, epsilon)->list:
     if np.random.random()>epsilon:
-        policy_num = np.argmax(q_cat[curr_state])
-    else:
         policy_num = np.random.randint(0,8)
+    else:
+        policy_num = np.argmax(q_cat[curr_state])
     binary_list = [1,1,1]+policy_num_to_binary_list(policy_num)
     return [DOORS[i] for i in range(6) if binary_list[i]==1]
 
@@ -119,10 +126,6 @@ def get_event(net_policy, mouse_state, cat_state, eta_mouse, eta_cat):
     
     eta_cat_state = eta_cat[cat_state]
     dummy_eta_cat = [-1] + eta_cat_state
-    
-    print(dummy_eta_cat)
-    print(dummy_eta_mouse)
-    print(net_policy)
 
     max_eta = 0    
     event = None
@@ -136,10 +139,13 @@ def get_event(net_policy, mouse_state, cat_state, eta_mouse, eta_cat):
     return event
 
 
-def update_t(t_table, old_state, new_state, action, r2, alpha, gamma):
-    t_table[old_state, action] = t_table[old_state, action]+alpha*[r2+gamma*max(t_table[new_state])-t_table[old_state, action]]
+def update_t(t_table, old_state, new_state, event, r2, alpha, gamma):
+    event_num = DOORS.index(event)
+    
+    t_table[old_state, event_num] = t_table[old_state, event_num]+alpha*(r2+gamma*max(t_table[new_state])-t_table[old_state, event_num])
 
 def update_R1(R1_table, state, local_policy, r1, beta):
+    print(local_policy)
     R1_table[state, local_policy] = R1_table[state, local_policy]+beta*(r1-R1_table[state, local_policy])
 
 def update_eta(eta_table, state, local_policy:list, event, delta, is_mouse):
@@ -203,6 +209,9 @@ for episode in range(epoch):
         mouse_policy = get_mouse_policy(q_mouse, new_mouse_state, epsilon)
         cat_policy = get_cat_policy(q_cat, new_cat_state, epsilon)
         
+        print(mouse_policy)
+        print(cat_policy)
+        print("asd")
         # Get net policy
         net_policy = get_net_policy(cat_policy, mouse_policy)
         
@@ -216,33 +225,33 @@ for episode in range(epoch):
         event = get_event(net_policy, new_mouse_state, new_cat_state, eta_mouse, eta_cat)
         
         # Send Action to DES
-        observation, reward, terminated, info = env.step(DOORS.index(event))
+        observation, reward, terminated, _, info = env.step(DOORS.index(event))
         
         mouse_r1, mouse_r2, cat_r1, cat_r2 = reward
         
         # Storing old states
-        old_cat_state = new_cat_state
         old_mouse_state = new_mouse_state
+        old_cat_state = new_cat_state
         
         # Getting new states
-        new_cat_state = cat_observation_to_state(observation)
         new_mouse_state = mouse_observation_to_state(observation)
+        new_cat_state = cat_observation_to_state(observation)
         
         # Updating T
-        update_t(t_cat, old_cat_state, new_cat_state, event, cat_r2, alpha, gamma)
         update_t(t_mouse, old_mouse_state, new_mouse_state, event, mouse_r2, alpha, gamma)
+        update_t(t_cat, old_cat_state, new_cat_state, event, cat_r2, alpha, gamma)
         
         # Updating R1
-        update_R1(R1_cat, old_cat_state, cat_policy, cat_r1, beta)
         update_R1(R1_mouse, old_mouse_state, mouse_policy, mouse_r1, beta)
+        update_R1(R1_cat, old_cat_state, cat_policy, cat_r1, beta)
         
         # Updating eta
-        update_eta(eta_cat, old_cat_state, cat_policy, event, delta, False)
         update_eta(eta_mouse, old_mouse_state, mouse_policy, event, delta, True)
+        update_eta(eta_cat, old_cat_state, cat_policy, event, delta, False)
         
         # Updating Q
-        update_Q(q_cat, t_cat, R1_cat, eta_cat, old_cat_state, cat_policy)
         update_Q(q_mouse, t_mouse, R1_mouse, eta_mouse, old_mouse_state, mouse_policy)
+        update_Q(q_cat, t_cat, R1_cat, eta_cat, old_cat_state, cat_policy)
         
         if count == 20:
             terminated = True

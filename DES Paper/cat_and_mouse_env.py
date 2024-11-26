@@ -13,13 +13,13 @@ class CatAndMouseEnv(gym.Env):
     Args:
         render_mode (str, optional): The mode to render the environment. Defaults to None.
     """
-    metadata = {'render.modes': ['human']}
+    metadata = {"render_modes": ["human"], "render_fps":4}
     
     def __init__(self, render_mode=None):
-        self.observation_space = spaces.Box(low=0, high=1, shape=(6,), dtype=np.int32)
+        self.observation_space = spaces.Box(low= 1, high=5, shape=(2,), dtype=np.int32)
         self.action_space = spaces.Discrete(6)
         
-        assert render_mode is None or render_mode in self.metadata['render.modes']
+        assert render_mode is None or render_mode in self.metadata['render_modes']
         self.render_mode = render_mode
     
     def update_door(self, event):
@@ -80,7 +80,7 @@ class CatAndMouseEnv(gym.Env):
         return 0
         
         
-    def reset(self):
+    def reset(self, seed=None, options = None):
         """
         Reset the environment to its initial state.
         Returns:
@@ -91,7 +91,7 @@ class CatAndMouseEnv(gym.Env):
         self.mouse_position = 2
         self.doors = np.ones(shape=(6,), dtype=np.int32) #[m1, m2, m3, c1, c2, c3]
         
-        observation = (self.mouse_position, self.cat_position)
+        observation = np.array([self.mouse_position, self.cat_position])
         info = {"doors": self.doors}
         return observation, info
     
@@ -126,9 +126,9 @@ class CatAndMouseEnv(gym.Env):
         
         info = {"doors":self.doors}
 
-        return (self.mouse_position, self.cat_position), (mouse_r1, mouse_r2, cat_r1, cat_r2), terminated, info
+        return np.array([self.mouse_position, self.cat_position]), (mouse_r1, mouse_r2, cat_r1, cat_r2), terminated, False, info
         
-        
+
     def render(self):
         """
         Render the environment.
