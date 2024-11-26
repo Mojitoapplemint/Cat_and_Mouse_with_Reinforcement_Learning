@@ -23,6 +23,7 @@ class CatAndMouseEnv(gym.Env):
         self.render_mode = render_mode
     
     def update_door(self, event):
+        #Change Disbled 
         cat_reward = 0
         mouse_reward = 0
         
@@ -112,10 +113,12 @@ class CatAndMouseEnv(gym.Env):
             bool: Whether the episode has terminated.
             dict: A dictionary containing the positions of the cat and mouse.
         """
+        
         terminated = False
         
         mouse_r1, cat_r1 = self.update_door(event)
         
+        #Let it move only when the observer observe events
         mouse_r2 = self.mouse_move()
         cat_r2 = self.cat_move()
         

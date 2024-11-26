@@ -1,8 +1,11 @@
 import gymnasium as gym
 import numpy as np
 import cat_and_mouse_env
+import pandas as pd
 
 DOORS = ["m1", "m2", "m3", "c1", "c2", "c3"]
+MOUSE_OBSERVABLE_DOORS = ["m1", "m2", "m3", "c1", "c2"]
+CAT_OBSERVABLE_DOORS = ["m2", "m3", "c1", "c2", "c3"]
 
 MOUSE_STATES = {
         (1,3):0,
@@ -53,15 +56,22 @@ def policy_num_to_binary_list(policy_num):
         binary_int = binary_int//10
     return binary_list
 
-def local_policy_to_binary_list(local_policy):
+def local_policy_to_policy_num(local_policy, is_mouse):
+    binary_list = []
+    for door in DOORS:
+        if door in local_policy:
+            binary_list.append(1)
+        else:
+            binary_list.append(0)
+            
+    if is_mouse:
+        binary_list =  binary_list[:3]
+    else:
+        binary_list = binary_list[3:]
     
-    return
-    
-
-def binary_list_to_policy_num(binary_list):
     binary = 100*binary_list[0]+10*binary_list[1]+binary_list[2]
     return int(str(binary), 2)
-    
+
 # [m1, m2, m3, c1, c2, c3]
 # [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
@@ -99,6 +109,8 @@ def get_mouse_policy(q_mouse, curr_state, epsilon)->list:
     binary_list = policy_num_to_binary_list(policy_num)+[1,1,1]
     return [DOORS[i] for i in range(6) if binary_list[i]==1]
 
+
+
 def get_cat_policy(q_cat, curr_state, epsilon)->list:
     if np.random.random()>epsilon:
         policy_num = np.random.randint(0,8)
@@ -122,37 +134,48 @@ def get_net_policy(cat_policy, mouse_policy):
 
 def get_event(net_policy, mouse_state, cat_state, eta_mouse, eta_cat):
     eta_mouse_state = eta_mouse[mouse_state]
-    dummy_eta_mouse = eta_mouse_state[0:3] + [-1] + eta_mouse_state[3:]
+    dummy_eta_mouse = np.concatenate((eta_mouse_state[0:3], [-1], eta_mouse_state[3:]))
     
     eta_cat_state = eta_cat[cat_state]
-    dummy_eta_cat = [-1] + eta_cat_state
+    dummy_eta_cat = np.concatenate(([-1], eta_cat_state))
 
     max_eta = 0    
     event = None
     for curr_event in net_policy:
         curr_event_num = DOORS.index(curr_event)
         curr_eta = max(dummy_eta_mouse[curr_event_num], dummy_eta_cat[curr_event_num])
-        if max_eta < curr_eta:
+        
+        if max_eta <= curr_eta:
             max_eta = curr_eta
             event = curr_event
             
     return event
 
 
-def update_t(t_table, old_state, new_state, event, r2, alpha, gamma):
-    event_num = DOORS.index(event)
+def update_t(t_table, old_state, new_state, event, r2, alpha, gamma, is_mouse):
+    if is_mouse and event not in MOUSE_OBSERVABLE_DOORS:
+        return
+    elif not is_mouse and event not in CAT_OBSERVABLE_DOORS:
+        return
     
+    if is_mouse:
+        event_num = MOUSE_OBSERVABLE_DOORS.index(event)
+    else:
+        event_num = CAT_OBSERVABLE_DOORS.index(event)
+        
     t_table[old_state, event_num] = t_table[old_state, event_num]+alpha*(r2+gamma*max(t_table[new_state])-t_table[old_state, event_num])
 
-def update_R1(R1_table, state, local_policy, r1, beta):
-    print(local_policy)
-    R1_table[state, local_policy] = R1_table[state, local_policy]+beta*(r1-R1_table[state, local_policy])
+def update_R1(R1_table, state, local_policy_num, r1, beta):
+    R1_table[state, local_policy_num] = R1_table[state, local_policy_num]+beta*(r1-R1_table[state, local_policy_num])
+    
 
 def update_eta(eta_table, state, local_policy:list, event, delta, is_mouse):
+
+    observable_policy = local_policy.copy()
     if is_mouse:
-        observable_policy = local_policy.remove("c1")
+        observable_policy.remove("c1")
     else:
-        observable_policy = local_policy.remove("m1")
+        observable_policy.remove("m1")
     
     for event_prime in observable_policy:
         event_prime_index = observable_policy.index(event_prime)
@@ -161,9 +184,13 @@ def update_eta(eta_table, state, local_policy:list, event, delta, is_mouse):
         else:
             eta_table[state, event_prime_index] = (1-delta)*eta_table[state, event_prime_index]
 
-def update_Q(q_table, T_table, R1_table, eta_table, state, policy):
+def update_Q(q_table, T_table, R1_table, eta_table, state, policy_num):
     eta_sum = np.sum(eta_table[state])
-    q_table[state, policy] = R1_table[state, policy]+np.dot(eta_table[state], T_table[state])/eta_sum
+    # if eta_sum == 0:
+        # print(eta_table)
+        # print(R1_table[state, policy_num]+np.dot(eta_table[state], T_table[state])/eta_sum)
+        
+    q_table[state, policy_num] = R1_table[state, policy_num]+np.dot(eta_table[state], T_table[state])/eta_sum
     
 
 # Top Level Code
@@ -181,18 +208,18 @@ R1_mouse = np.zeros(shape=(6,8))
 R1_cat = np.zeros(shape=(6,8))
 
 # (State s_i, 5 observable events) Each SuperVisor can observe 5 events
-eta_mouse = init_mouse_eta()
-eta_cat= init_cat_eta()
+eta_mouse = np.array(init_mouse_eta())
+eta_cat= np.array(init_cat_eta())
 
 epoch=100
-alpha = 0.9
-beta = 0.9
+alpha = 0.1
+beta = 0.1
 gamma = 0.9
-delta = 0.9
+delta = 0.1
 epsilon = 0.9
 
 for episode in range(epoch):
-    if (episode%1000==0):
+    if (episode%100==0):
         print(str(100*episode/epoch)+"%","done" , end="\r")
         
     observation, info = env.reset()
@@ -208,21 +235,20 @@ for episode in range(epoch):
         # Get control policies for each SuperVisor
         mouse_policy = get_mouse_policy(q_mouse, new_mouse_state, epsilon)
         cat_policy = get_cat_policy(q_cat, new_cat_state, epsilon)
-        
-        print(mouse_policy)
-        print(cat_policy)
-        print("asd")
+
         # Get net policy
         net_policy = get_net_policy(cat_policy, mouse_policy)
         
         # If net_policy is empty, then continue
         if len(net_policy)==0:
-            print(f"cat_policy:{cat_policy}, mouse_policy:{mouse_policy}")
+            # print("Net policy is empty")
             count +=1
             continue
         
         # Get action from net policy
         event = get_event(net_policy, new_mouse_state, new_cat_state, eta_mouse, eta_cat)
+        
+        # 
         
         # Send Action to DES
         observation, reward, terminated, _, info = env.step(DOORS.index(event))
@@ -238,29 +264,42 @@ for episode in range(epoch):
         new_cat_state = cat_observation_to_state(observation)
         
         # Updating T
-        update_t(t_mouse, old_mouse_state, new_mouse_state, event, mouse_r2, alpha, gamma)
-        update_t(t_cat, old_cat_state, new_cat_state, event, cat_r2, alpha, gamma)
+        update_t(t_mouse, old_mouse_state, new_mouse_state, event, mouse_r2, alpha, gamma, True)
+        update_t(t_cat, old_cat_state, new_cat_state, event, cat_r2, alpha, gamma, False)
+        # print(t_mouse)
+        # print(t_cat)
         
         # Updating R1
-        update_R1(R1_mouse, old_mouse_state, mouse_policy, mouse_r1, beta)
-        update_R1(R1_cat, old_cat_state, cat_policy, cat_r1, beta)
+        mouse_policy_num = local_policy_to_policy_num(mouse_policy, True)
+        cat_policy_num = local_policy_to_policy_num(cat_policy, False)
+        
+        update_R1(R1_mouse, old_mouse_state, mouse_policy_num, mouse_r1, beta)
+        update_R1(R1_cat, old_cat_state, cat_policy_num, cat_r1, beta)
+        
+        # print(R1_mouse)
+        # print(R1_cat)
         
         # Updating eta
         update_eta(eta_mouse, old_mouse_state, mouse_policy, event, delta, True)
         update_eta(eta_cat, old_cat_state, cat_policy, event, delta, False)
+  
+        zeros = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        print(eta_cat[1])
         
         # Updating Q
-        update_Q(q_mouse, t_mouse, R1_mouse, eta_mouse, old_mouse_state, mouse_policy)
-        update_Q(q_cat, t_cat, R1_cat, eta_cat, old_cat_state, cat_policy)
+        update_Q(q_mouse, t_mouse, R1_mouse, eta_mouse, old_mouse_state, mouse_policy_num)
+        update_Q(q_cat, t_cat, R1_cat, eta_cat, old_cat_state, cat_policy_num)
+        
+        # print(q_mouse)
+        # print(q_cat)
+        # print()
         
         if count == 20:
             terminated = True
         count +=1
         
-        
-'''
-1. event
+df_mouse = pd.DataFrame(q_mouse)
+df_cat = pd.DataFrame(q_cat)
 
-2. 
-
-'''
+df_mouse.to_csv("q_mouse.csv")
+df_cat.to_csv("q_cat.csv")
