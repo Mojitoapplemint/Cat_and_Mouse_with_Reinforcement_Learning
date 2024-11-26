@@ -3,9 +3,9 @@ import numpy as np
 import cat_and_mouse_env
 import pandas as pd
 
-DOORS = ["m1", "m2", "m3", "c1", "c2", "c3"]
-MOUSE_OBSERVABLE_DOORS = ["m1", "m2", "m3", "c1", "c2"]
-CAT_OBSERVABLE_DOORS = ["m2", "m3", "c1", "c2", "c3"]
+EVENTS = ["m1", "m2", "m3", "c1", "c2", "c3"]
+MOUSE_OBSERVABLE_EVENTS = ["m1", "m2", "m3", "c1", "c2"]
+CAT_OBSERVABLE_EVENTS = ["m2", "m3", "c1", "c2", "c3"]
 
 MOUSE_STATES = {
         (1,3):0,
@@ -24,6 +24,20 @@ CAT_STATES = {
         (3,4):4, 
         (3,5):5
     }
+
+FEASIBLE_EVENTS = {
+    (1,3):("m2", "c3"),
+    (1,4):("m2", "c1"),
+    (1,5):("m2", "c2"),
+    
+    (2,3):("m1", "c3"),
+    (2,4):("m1", "c1"),
+    (2,5):("m1", "c2"),
+    
+    (3,3):("m3", "c3"),
+    (3,4):("m3", "c1"),
+    (3,5):("m3", "c2"),
+}
 
 def policy_num_to_binary_list(policy_num):
     """ 
@@ -58,7 +72,7 @@ def policy_num_to_binary_list(policy_num):
 
 def local_policy_to_policy_num(local_policy, is_mouse):
     binary_list = []
-    for door in DOORS:
+    for door in EVENTS:
         if door in local_policy:
             binary_list.append(1)
         else:
@@ -107,9 +121,7 @@ def get_mouse_policy(q_mouse, curr_state, epsilon)->list:
     else:
         policy_num = np.argmax(q_mouse[curr_state])
     binary_list = policy_num_to_binary_list(policy_num)+[1,1,1]
-    return [DOORS[i] for i in range(6) if binary_list[i]==1]
-
-
+    return [EVENTS[i] for i in range(6) if binary_list[i]==1]
 
 def get_cat_policy(q_cat, curr_state, epsilon)->list:
     if np.random.random()>epsilon:
@@ -117,7 +129,7 @@ def get_cat_policy(q_cat, curr_state, epsilon)->list:
     else:
         policy_num = np.argmax(q_cat[curr_state])
     binary_list = [1,1,1]+policy_num_to_binary_list(policy_num)
-    return [DOORS[i] for i in range(6) if binary_list[i]==1]
+    return [EVENTS[i] for i in range(6) if binary_list[i]==1]
 
 
 def get_net_policy(cat_policy, mouse_policy):
@@ -142,26 +154,35 @@ def get_event(net_policy, mouse_state, cat_state, eta_mouse, eta_cat):
     max_eta = 0    
     event = None
     for curr_event in net_policy:
-        curr_event_num = DOORS.index(curr_event)
+        curr_event_num = EVENTS.index(curr_event)
         curr_eta = max(dummy_eta_mouse[curr_event_num], dummy_eta_cat[curr_event_num])
         
         if max_eta <= curr_eta:
             max_eta = curr_eta
             event = curr_event
-            
     return event
 
+def get_disabled_event(net_policy, observation):
+    feasible_events = FEASIBLE_EVENTS.get(tuple(observation))
+
+    disabled = []
+    for event in EVENTS:
+        if (event not in net_policy) and (event in feasible_events):
+            disabled.append(event)
+            
+    return disabled            
+    
 
 def update_t(t_table, old_state, new_state, event, r2, alpha, gamma, is_mouse):
-    if is_mouse and event not in MOUSE_OBSERVABLE_DOORS:
+    if is_mouse and event not in MOUSE_OBSERVABLE_EVENTS:
         return
-    elif not is_mouse and event not in CAT_OBSERVABLE_DOORS:
+    elif not is_mouse and event not in CAT_OBSERVABLE_EVENTS:
         return
     
     if is_mouse:
-        event_num = MOUSE_OBSERVABLE_DOORS.index(event)
+        event_num = MOUSE_OBSERVABLE_EVENTS.index(event)
     else:
-        event_num = CAT_OBSERVABLE_DOORS.index(event)
+        event_num = CAT_OBSERVABLE_EVENTS.index(event)
         
     t_table[old_state, event_num] = t_table[old_state, event_num]+alpha*(r2+gamma*max(t_table[new_state])-t_table[old_state, event_num])
 
@@ -211,7 +232,7 @@ R1_cat = np.zeros(shape=(6,8))
 eta_mouse = np.array(init_mouse_eta())
 eta_cat= np.array(init_cat_eta())
 
-epoch=100
+epoch=10000
 alpha = 0.1
 beta = 0.1
 gamma = 0.9
@@ -248,10 +269,11 @@ for episode in range(epoch):
         # Get action from net policy
         event = get_event(net_policy, new_mouse_state, new_cat_state, eta_mouse, eta_cat)
         
-        # 
+        # Get Feasible event at current state that is not included in net_policy
+        disabled = get_disabled_event(net_policy, observation)
         
         # Send Action to DES
-        observation, reward, terminated, _, info = env.step(DOORS.index(event))
+        observation, reward, terminated, _, info = env.step((event, disabled))
         
         mouse_r1, mouse_r2, cat_r1, cat_r2 = reward
         
@@ -266,8 +288,6 @@ for episode in range(epoch):
         # Updating T
         update_t(t_mouse, old_mouse_state, new_mouse_state, event, mouse_r2, alpha, gamma, True)
         update_t(t_cat, old_cat_state, new_cat_state, event, cat_r2, alpha, gamma, False)
-        # print(t_mouse)
-        # print(t_cat)
         
         # Updating R1
         mouse_policy_num = local_policy_to_policy_num(mouse_policy, True)
@@ -276,15 +296,9 @@ for episode in range(epoch):
         update_R1(R1_mouse, old_mouse_state, mouse_policy_num, mouse_r1, beta)
         update_R1(R1_cat, old_cat_state, cat_policy_num, cat_r1, beta)
         
-        # print(R1_mouse)
-        # print(R1_cat)
-        
         # Updating eta
         update_eta(eta_mouse, old_mouse_state, mouse_policy, event, delta, True)
         update_eta(eta_cat, old_cat_state, cat_policy, event, delta, False)
-  
-        zeros = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        print(eta_cat[1])
         
         # Updating Q
         update_Q(q_mouse, t_mouse, R1_mouse, eta_mouse, old_mouse_state, mouse_policy_num)

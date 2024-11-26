@@ -15,6 +15,8 @@ class CatAndMouseEnv(gym.Env):
     """
     metadata = {"render_modes": ["human"], "render_fps":4}
     
+    EVENTS = ["m1", "m2", "m3", "c1", "c2", "c3"]
+    
     def __init__(self, render_mode=None):
         self.observation_space = spaces.Box(low= 1, high=5, shape=(2,), dtype=np.int32)
         self.action_space = spaces.Discrete(6)
@@ -22,39 +24,38 @@ class CatAndMouseEnv(gym.Env):
         assert render_mode is None or render_mode in self.metadata['render_modes']
         self.render_mode = render_mode
     
-    def update_door(self, event):
+    def update_door(self, event, disabled):
         #Change Disbled 
         cat_reward = 0
         mouse_reward = 0
         
-        for i in range(3):
-            if i==event:
-                self.doors[i] = 1
-            else:
-                self.doors[i] = 0
-                mouse_reward -= 2
+        # Enabling event
+        self.doors[self.EVENTS.index(event)] = 1
         
-        for i in range(3, 6):
-            if i==event:
-                self.doors[i] = 1
-            else:
-                self.doors[i] = 0
-                cat_reward -= 2
+        # Disabling event(s)
+        for d_event in disabled:
+            d_event_num = self.EVENTS.index(d_event)
+            if self.doors[d_event_num] == 1:
+                self.doors[d_event_num] = 0
+                if d_event_num<3:
+                    mouse_reward-=2
+                else:
+                    cat_reward-=2
                 
         return mouse_reward, cat_reward
         
-    def cat_move(self):
+    def cat_move(self, event):
         
         if self.cat_position == 3:
-            door_num = 5 # c3
+            required_event = "c3"
             
         if self.cat_position == 4:
-            door_num = 3 # c1
+            required_event = "c1"
         
         if self.cat_position == 5:
-            door_num = 4 # c2
+            required_event = "c2"
         
-        if self.doors[door_num] == 1:        
+        if required_event == event:        
             self.cat_position = self.cat_position + 1
             if self.cat_position == 6:
                 self.cat_position = 3
@@ -62,18 +63,18 @@ class CatAndMouseEnv(gym.Env):
         return 0
             
     
-    def mouse_move(self):
+    def mouse_move(self, event):
         
         if self.mouse_position == 1:
-            door_num = 1 # m2
+            required_event = "m2"
             
         if self.mouse_position == 2:
-            door_num = 0 # m1
+            required_event = "m1"
         
         if self.mouse_position == 3:
-            door_num = 2 # m3
+            required_event = "m3"
 
-        if self.doors[door_num] == 1:        
+        if required_event == event:        
             self.mouse_position = self.mouse_position - 1
             if self.mouse_position == 0:
                 self.mouse_position = 3
@@ -101,7 +102,7 @@ class CatAndMouseEnv(gym.Env):
         1 = Enable = open
         0 = Disable = close
     '''
-    def step(self, event):
+    def step(self, events):
         """
         Take a step in the environment with the given actions for the cat and mouse.
         Args:
@@ -116,11 +117,13 @@ class CatAndMouseEnv(gym.Env):
         
         terminated = False
         
-        mouse_r1, cat_r1 = self.update_door(event)
+        event, disabled = events
+        
+        mouse_r1, cat_r1 = self.update_door(event, disabled)
         
         #Let it move only when the observer observe events
-        mouse_r2 = self.mouse_move()
-        cat_r2 = self.cat_move()
+        mouse_r2 = self.mouse_move(event)
+        cat_r2 = self.cat_move(event)
         
         if self.cat_position == 3 and self.mouse_position == 3:
             terminated = True
