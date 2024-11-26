@@ -22,37 +22,25 @@ class CatAndMouseEnv(gym.Env):
         assert render_mode is None or render_mode in self.metadata['render.modes']
         self.render_mode = render_mode
     
-    def update_door(self, action):
+    def update_door(self, event):
         cat_reward = 0
         mouse_reward = 0
         
         for i in range(3):
-            if self.close_door(i, action[i]):
+            if i==event:
+                self.doors[i] = 1
+            else:
+                self.doors[i] = 0
                 mouse_reward -= 2
         
         for i in range(3, 6):
-            if self.close_door(i, action[i]):
+            if i==event:
+                self.doors[i] = 1
+            else:
+                self.doors[i] = 0
                 cat_reward -= 2
                 
-        return cat_reward, mouse_reward
-        
-    
-    def close_door(self, door_id, action):
-        """
-        Close or open a door based on the action.
-        Args:
-            door_id (int): The ID of the door to be closed or opened.
-            action (int): The action to be performed (0 to close, 1 to open).
-        Returns:
-            bool: True if the door was closed, False otherwise.
-        """
-        
-        if self.doors[door_id] == 1 and action == 0:
-            self.doors[door_id] = 0
-            return True
-        
-        self.doors[door_id] = 1
-        return False
+        return mouse_reward, cat_reward
         
     def cat_move(self):
         
@@ -103,7 +91,7 @@ class CatAndMouseEnv(gym.Env):
         self.mouse_position = 2
         self.doors = np.ones(shape=(6,), dtype=np.int32) #[m1, m2, m3, c1, c2, c3]
         
-        observation = (self.cat_position, self.mouse_position)
+        observation = (self.mouse_position, self.cat_position)
         info = {"doors": self.doors}
         return observation, info
     
@@ -126,10 +114,10 @@ class CatAndMouseEnv(gym.Env):
         """
         terminated = False
         
-        cat_r1, mouse_r1 = self.update_door(event)
+        mouse_r1, cat_r1 = self.update_door(event)
         
-        cat_r2 = self.cat_move(self)
-        mouse_r2 = self.mouse_move(self)
+        mouse_r2 = self.mouse_move()
+        cat_r2 = self.cat_move()
         
         if self.cat_position == 3 and self.mouse_position == 3:
             terminated = True
@@ -138,7 +126,7 @@ class CatAndMouseEnv(gym.Env):
         
         info = {"doors":self.doors}
 
-        return (self.cat_position, self.mouse_position), cat_r1, cat_r2, mouse_r1, mouse_r2, terminated, info
+        return (self.mouse_position, self.cat_position), (mouse_r1, mouse_r2, cat_r1, cat_r2), terminated, info
         
         
     def render(self):

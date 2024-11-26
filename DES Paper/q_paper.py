@@ -80,7 +80,7 @@ def mouse_observation_to_state(observation):
     return MOUSE_STATES.get(observation)
 
 def get_mouse_policy(q_mouse, curr_state, epsilon)->list:
-    if np.random()>epsilon:
+    if np.random.random()>epsilon:
         policy_num = np.argmax(q_mouse[curr_state])
     else:
         policy_num = np.random.randint(0,8)
@@ -93,7 +93,7 @@ def cat_observation_to_state(observation):
 
 
 def get_cat_policy(q_cat, curr_state, epsilon)->list:
-    if np.random()>epsilon:
+    if np.random.random()>epsilon:
         policy_num = np.argmax(q_cat[curr_state])
     else:
         policy_num = np.random.randint(0,8)
@@ -113,18 +113,22 @@ def get_net_policy(cat_policy, mouse_policy):
 # [DM, m2, m3, c1, c2, c3] cat
 # [m1, m2, m3, DM, c2, c3] mouse
 
-def get_event(net_policy, state, eta_mouse, eta_cat):
-    eta_cat_state = eta_cat[state]
-    dummy_eta_cat = [-1] + eta_cat_state
-    
-    eta_mouse_state = eta_mouse[state]
+def get_event(net_policy, mouse_state, cat_state, eta_mouse, eta_cat):
+    eta_mouse_state = eta_mouse[mouse_state]
     dummy_eta_mouse = eta_mouse_state[0:3] + [-1] + eta_mouse_state[3:]
     
+    eta_cat_state = eta_cat[cat_state]
+    dummy_eta_cat = [-1] + eta_cat_state
+    
+    print(dummy_eta_cat)
+    print(dummy_eta_mouse)
+    print(net_policy)
+
     max_eta = 0    
     event = None
     for curr_event in net_policy:
         curr_event_num = DOORS.index(curr_event)
-        curr_eta = np.max(dummy_eta_mouse[curr_event_num], dummy_eta_cat[curr_event_num])
+        curr_eta = max(dummy_eta_mouse[curr_event_num], dummy_eta_cat[curr_event_num])
         if max_eta < curr_eta:
             max_eta = curr_eta
             event = curr_event
@@ -133,7 +137,7 @@ def get_event(net_policy, state, eta_mouse, eta_cat):
 
 
 def update_t(t_table, old_state, new_state, action, r2, alpha, gamma):
-    t_table[old_state, action] = t_table[old_state, action]+alpha*[r2+gamma*np.max(t_table[new_state])-t_table[old_state, action]]
+    t_table[old_state, action] = t_table[old_state, action]+alpha*[r2+gamma*max(t_table[new_state])-t_table[old_state, action]]
 
 def update_R1(R1_table, state, local_policy, r1, beta):
     R1_table[state, local_policy] = R1_table[state, local_policy]+beta*(r1-R1_table[state, local_policy])
@@ -157,7 +161,7 @@ def update_Q(q_table, T_table, R1_table, eta_table, state, policy):
     
 
 # Top Level Code
-env = gym.make("CatAndMouse-v0")
+env = gym.make("CatAndMouse-v0", render_mode = "human")
 
 q_mouse = np.zeros(shape=(6,8))   # Action: [m1 ON, m1 OFF, m2 ON, m2 OFF, m3 ON, m3 OFF]
 q_cat = np.zeros(shape=(6,8))     # Action: [c1 ON, c1 OFF, c2 ON, c2 OFF, c3 ON, c3 OFF]
@@ -174,7 +178,7 @@ R1_cat = np.zeros(shape=(6,8))
 eta_mouse = init_mouse_eta()
 eta_cat= init_cat_eta()
 
-epoch=1000000
+epoch=100
 alpha = 0.9
 beta = 0.9
 gamma = 0.9
@@ -196,8 +200,8 @@ for episode in range(epoch):
     while (not terminated):
         
         # Get control policies for each SuperVisor
-        mouse_policy = get_mouse_policy(new_mouse_state, epsilon)
-        cat_policy = get_cat_policy(new_cat_state, epsilon)
+        mouse_policy = get_mouse_policy(q_mouse, new_mouse_state, epsilon)
+        cat_policy = get_cat_policy(q_cat, new_cat_state, epsilon)
         
         # Get net policy
         net_policy = get_net_policy(cat_policy, mouse_policy)
@@ -209,10 +213,12 @@ for episode in range(epoch):
             continue
         
         # Get action from net policy
-        event = get_event(net_policy)
+        event = get_event(net_policy, new_mouse_state, new_cat_state, eta_mouse, eta_cat)
         
         # Send Action to DES
-        observation, cat_r1, cat_r2, mouse_r1, mouse_r2, terminated, info = env.step(DOORS.index(event))
+        observation, reward, terminated, info = env.step(DOORS.index(event))
+        
+        mouse_r1, mouse_r2, cat_r1, cat_r2 = reward
         
         # Storing old states
         old_cat_state = new_cat_state
@@ -242,3 +248,10 @@ for episode in range(epoch):
             terminated = True
         count +=1
         
+        
+'''
+1. event
+
+2. 
+
+'''
