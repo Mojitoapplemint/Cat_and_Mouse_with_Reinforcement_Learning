@@ -112,7 +112,7 @@ class CatAndMouseEnv(gym.Env):
         1 = Enable = open
         0 = Disable = close
     '''
-    def step(self, action):
+    def step(self, event):
         """
         Take a step in the environment with the given actions for the cat and mouse.
         Args:
@@ -126,7 +126,7 @@ class CatAndMouseEnv(gym.Env):
         """
         terminated = False
         
-        cat_r1, mouse_r1 = self.update_door(action)
+        cat_r1, mouse_r1 = self.update_door(event)
         
         cat_r2 = self.cat_move(self)
         mouse_r2 = self.mouse_move(self)
