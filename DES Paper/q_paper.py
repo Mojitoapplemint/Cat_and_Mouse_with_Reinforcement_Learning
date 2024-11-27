@@ -232,12 +232,12 @@ R1_cat = np.zeros(shape=(6,8))
 eta_mouse = np.array(init_mouse_eta())
 eta_cat= np.array(init_cat_eta())
 
-epoch=100
+epoch= 50
 alpha = 0.1
 beta = 0.1
 gamma = 0.9
 delta = 0.1
-epsilon = 0.9
+epsilon = 0.8
 
 train_count=[0,0,0,0,0,0]
 
@@ -319,12 +319,12 @@ for episode in range(epoch):
 for i in range(6):
     print(f"{EVENTS[i]}: {train_count[i]}")
 
-# df_mouse = pd.DataFrame(q_mouse)
-# df_cat = pd.DataFrame(q_cat)
-# df_eta_mouse = pd.DataFrame(eta_mouse)
-# df_eta_cat = pd.DataFrame(eta_cat)
+df_mouse = pd.DataFrame(q_mouse)
+df_cat = pd.DataFrame(q_cat)
+df_eta_mouse = pd.DataFrame(eta_mouse)
+df_eta_cat = pd.DataFrame(eta_cat)
 
-# df_mouse.to_csv("q_mouse.csv")
-# df_cat.to_csv("q_cat.csv")
-# df_eta_mouse.to_csv("eta_mouse.csv")
-# df_eta_cat.to_csv("eta_cat.csv")
+df_mouse.to_csv("q_mouse.csv")
+df_cat.to_csv("q_cat.csv")
+df_eta_mouse.to_csv("eta_mouse.csv")
+df_eta_cat.to_csv("eta_cat.csv")
