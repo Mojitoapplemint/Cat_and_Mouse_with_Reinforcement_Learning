@@ -232,12 +232,14 @@ R1_cat = np.zeros(shape=(6,8))
 eta_mouse = np.array(init_mouse_eta())
 eta_cat= np.array(init_cat_eta())
 
-epoch=10000
+epoch=100
 alpha = 0.1
 beta = 0.1
 gamma = 0.9
 delta = 0.1
 epsilon = 0.9
+
+train_count=[0,0,0,0,0,0]
 
 for episode in range(epoch):
     if (episode%100==0):
@@ -268,6 +270,8 @@ for episode in range(epoch):
         
         # Get action from net policy
         event = get_event(net_policy, new_mouse_state, new_cat_state, eta_mouse, eta_cat)
+        
+        train_count[EVENTS.index(event)] +=1
         
         # Get Feasible event at current state that is not included in net_policy
         disabled = get_disabled_event(net_policy, observation)
@@ -311,9 +315,16 @@ for episode in range(epoch):
         if count == 20:
             terminated = True
         count +=1
-        
-df_mouse = pd.DataFrame(q_mouse)
-df_cat = pd.DataFrame(q_cat)
 
-df_mouse.to_csv("q_mouse.csv")
-df_cat.to_csv("q_cat.csv")
+for i in range(6):
+    print(f"{EVENTS[i]}: {train_count[i]}")
+
+# df_mouse = pd.DataFrame(q_mouse)
+# df_cat = pd.DataFrame(q_cat)
+# df_eta_mouse = pd.DataFrame(eta_mouse)
+# df_eta_cat = pd.DataFrame(eta_cat)
+
+# df_mouse.to_csv("q_mouse.csv")
+# df_cat.to_csv("q_cat.csv")
+# df_eta_mouse.to_csv("eta_mouse.csv")
+# df_eta_cat.to_csv("eta_cat.csv")
