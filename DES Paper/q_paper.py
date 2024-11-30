@@ -263,7 +263,7 @@ R1_cat = np.zeros(shape=(6,2))
 eta_mouse = np.array(init_mouse_eta())
 eta_cat= np.array(init_cat_eta())
 
-epoch= 100
+epoch= 1000
 alpha = 0.1
 beta = 0.1
 gamma = 0.9
@@ -279,8 +279,8 @@ for episode in range(epoch):
     observation, info = env.reset()
     terminated = False
     
-    print(observation)
-    print()
+    # print(observation)
+    # print()
     
     new_mouse_state = mouse_observation_to_state(observation)
     new_cat_state = cat_observation_to_state(observation)
@@ -310,12 +310,12 @@ for episode in range(epoch):
         # Get Feasible event at current state that is not included in net_policy
         disabled = get_disabled_event(net_policy, observation)
         
-        print(observation)
-        print(mouse_policy)
-        print(cat_policy)
-        print(net_policy)
-        print(event)
-        print("disabled",disabled)
+        # print(observation)
+        # print(mouse_policy)
+        # print(cat_policy)
+        # print(net_policy)
+        # print(event)
+        # print("disabled",disabled)
         
         # Send Action to DES
         observation, reward, terminated, _, info = env.step((event, disabled))
