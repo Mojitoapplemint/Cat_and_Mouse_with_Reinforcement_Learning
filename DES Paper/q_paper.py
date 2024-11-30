@@ -115,21 +115,52 @@ def mouse_observation_to_state(observation):
 def cat_observation_to_state(observation):
     return CAT_STATES.get(tuple(observation))
 
-def get_mouse_policy(q_mouse, curr_state, epsilon)->list:
+def get_mouse_policy(q_mouse, curr_state, observation, epsilon)->list:
     if np.random.random()>epsilon:
-        policy_num = np.random.randint(0,8)
+        # Exploration
+        policy_num = 1-np.argmax(q_mouse[curr_state])
     else:
+        # Exploitation
         policy_num = np.argmax(q_mouse[curr_state])
-    binary_list = policy_num_to_binary_list(policy_num)+[1,1,1]
-    return [EVENTS[i] for i in range(6) if binary_list[i]==1]
-
-def get_cat_policy(q_cat, curr_state, epsilon)->list:
-    if np.random.random()>epsilon:
-        policy_num = np.random.randint(0,8)
+        
+    # if np.random.random()>epsilon:
+    #     # Exploration
+    #     policy_num = 1
+    # else:
+    #     # Exploitation
+    #     policy_num = 0
+    
+    # print(FEASIBLE_EVENTS.get(tuple(observation)))
+    
+    if policy_num == 1:
+        policy = [FEASIBLE_EVENTS.get(tuple(observation))[0]]+["c1", "c2", "c3"]
     else:
+        policy = ["c1", "c2", "c3"]
+    
+    return policy, policy_num
+
+def get_cat_policy(q_cat, curr_state, observation,  epsilon)->list:
+    
+    if np.random.random()>epsilon:
+        # Exploration
+        policy_num = 1-np.argmax(q_cat[curr_state])
+    else:
+        # Exploitation
         policy_num = np.argmax(q_cat[curr_state])
-    binary_list = [1,1,1]+policy_num_to_binary_list(policy_num)
-    return [EVENTS[i] for i in range(6) if binary_list[i]==1]
+        
+    # if np.random.random()>epsilon:
+    #     # Exploration
+    #     policy_num = 1
+    # else:
+    #     # Exploitation
+    #     policy_num = 0
+
+    if policy_num == 1:
+        policy = ["m1", "m2", "m3"]+[FEASIBLE_EVENTS.get(tuple(observation))[1]]
+    else:
+        policy = ["m1", "m2", "m3"]
+    
+    return policy, policy_num
 
 
 def get_net_policy(cat_policy, mouse_policy):
@@ -217,27 +248,27 @@ def update_Q(q_table, T_table, R1_table, eta_table, state, policy_num):
 # Top Level Code
 env = gym.make("CatAndMouse-v0", render_mode = "human")
 
-q_mouse = np.zeros(shape=(6,8))   # Action: [m1 ON, m1 OFF, m2 ON, m2 OFF, m3 ON, m3 OFF]
-q_cat = np.zeros(shape=(6,8))     # Action: [c1 ON, c1 OFF, c2 ON, c2 OFF, c3 ON, c3 OFF]
+q_mouse = np.zeros(shape=(6,2)) # 0: Disable controllable & feasible event, 1: Enable controllable & feasible event
+q_cat = np.zeros(shape=(6,2)) # 0: Disable controllable & feasible event, 1: Enable controllable & feasible event
 
 # (State s_i, 5 observable events) Each SuperVisor can observe 5 events
 t_mouse = np.zeros(shape=(6,5)) 
 t_cat = np.zeros(shape=(6,5))
 
 # (State s_i, all possible control policy) 2^3 = 8 control policies
-R1_mouse = np.zeros(shape=(6,8))
-R1_cat = np.zeros(shape=(6,8))
+R1_mouse = np.zeros(shape=(6,2))
+R1_cat = np.zeros(shape=(6,2))
 
 # (State s_i, 5 observable events) Each SuperVisor can observe 5 events
 eta_mouse = np.array(init_mouse_eta())
 eta_cat= np.array(init_cat_eta())
 
-epoch= 50
+epoch= 100
 alpha = 0.1
 beta = 0.1
 gamma = 0.9
 delta = 0.1
-epsilon = 0.8
+epsilon = 0.9
 
 train_count=[0,0,0,0,0,0]
 
@@ -248,6 +279,9 @@ for episode in range(epoch):
     observation, info = env.reset()
     terminated = False
     
+    print(observation)
+    print()
+    
     new_mouse_state = mouse_observation_to_state(observation)
     new_cat_state = cat_observation_to_state(observation)
     
@@ -256,8 +290,8 @@ for episode in range(epoch):
     while (not terminated):
         
         # Get control policies for each SuperVisor
-        mouse_policy = get_mouse_policy(q_mouse, new_mouse_state, epsilon)
-        cat_policy = get_cat_policy(q_cat, new_cat_state, epsilon)
+        mouse_policy, mouse_policy_num = get_mouse_policy(q_mouse, new_mouse_state, observation, epsilon)
+        cat_policy, cat_policy_num = get_cat_policy(q_cat, new_cat_state, observation, epsilon)
 
         # Get net policy
         net_policy = get_net_policy(cat_policy, mouse_policy)
@@ -276,6 +310,13 @@ for episode in range(epoch):
         # Get Feasible event at current state that is not included in net_policy
         disabled = get_disabled_event(net_policy, observation)
         
+        print(observation)
+        print(mouse_policy)
+        print(cat_policy)
+        print(net_policy)
+        print(event)
+        print("disabled",disabled)
+        
         # Send Action to DES
         observation, reward, terminated, _, info = env.step((event, disabled))
         
@@ -293,10 +334,7 @@ for episode in range(epoch):
         update_t(t_mouse, old_mouse_state, new_mouse_state, event, mouse_r2, alpha, gamma, True)
         update_t(t_cat, old_cat_state, new_cat_state, event, cat_r2, alpha, gamma, False)
         
-        # Updating R1
-        mouse_policy_num = local_policy_to_policy_num(mouse_policy, True)
-        cat_policy_num = local_policy_to_policy_num(cat_policy, False)
-        
+        # Updating R1   
         update_R1(R1_mouse, old_mouse_state, mouse_policy_num, mouse_r1, beta)
         update_R1(R1_cat, old_cat_state, cat_policy_num, cat_r1, beta)
         
