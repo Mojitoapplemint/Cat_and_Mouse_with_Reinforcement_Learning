@@ -255,7 +255,7 @@ q_cat = np.zeros(shape=(6,2)) # 0: Disable controllable & feasible event, 1: Ena
 t_mouse = np.zeros(shape=(6,5)) 
 t_cat = np.zeros(shape=(6,5))
 
-# (State s_i, all possible control policy) 2^3 = 8 control policies
+# (State s_i, all feasible control policy)
 R1_mouse = np.zeros(shape=(6,2))
 R1_cat = np.zeros(shape=(6,2))
 
@@ -263,7 +263,7 @@ R1_cat = np.zeros(shape=(6,2))
 eta_mouse = np.array(init_mouse_eta())
 eta_cat= np.array(init_cat_eta())
 
-epoch= 1000
+epoch= 100
 alpha = 0.1
 beta = 0.1
 gamma = 0.9
@@ -275,7 +275,9 @@ train_count=[0,0,0,0,0,0]
 for episode in range(epoch):
     if (episode%100==0):
         print(str(100*episode/epoch)+"%","done" , end="\r")
-        
+    
+    # print("New Episode")
+    
     observation, info = env.reset()
     terminated = False
     
@@ -305,6 +307,8 @@ for episode in range(epoch):
         # Get action from net policy
         event = get_event(net_policy, new_mouse_state, new_cat_state, eta_mouse, eta_cat)
         
+        # print(event)
+        
         train_count[EVENTS.index(event)] +=1
         
         # Get Feasible event at current state that is not included in net_policy
@@ -314,13 +318,14 @@ for episode in range(epoch):
         # print(mouse_policy)
         # print(cat_policy)
         # print(net_policy)
-        # print(event)
-        # print("disabled",disabled)
+        # print("Enabled", event, "/ disabled",disabled)
         
         # Send Action to DES
         observation, reward, terminated, _, info = env.step((event, disabled))
         
         mouse_r1, mouse_r2, cat_r1, cat_r2 = reward
+        
+        # print(mouse_r1, mouse_r2, cat_r1, cat_r2)
         
         # Storing old states
         old_mouse_state = new_mouse_state
