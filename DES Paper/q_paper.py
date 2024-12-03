@@ -276,13 +276,13 @@ for episode in range(epoch):
     if (episode%100==0):
         print(str(100*episode/epoch)+"%","done" , end="\r")
     
-    # print("New Episode")
+    print("New Episode")
     
     observation, info = env.reset()
     terminated = False
     
-    # print(observation)
-    # print()
+    print(observation)
+    print()
     
     new_mouse_state = mouse_observation_to_state(observation)
     new_cat_state = cat_observation_to_state(observation)
@@ -314,11 +314,11 @@ for episode in range(epoch):
         # Get Feasible event at current state that is not included in net_policy
         disabled = get_disabled_event(net_policy, observation)
         
-        # print(observation)
-        # print(mouse_policy)
-        # print(cat_policy)
-        # print(net_policy)
-        # print("Enabled", event, "/ disabled",disabled)
+        print(observation)
+        print(mouse_policy)
+        print(cat_policy)
+        print(net_policy)
+        print("Enabled", event, "/ disabled",disabled)
         
         # Send Action to DES
         observation, reward, terminated, _, info = env.step((event, disabled))
