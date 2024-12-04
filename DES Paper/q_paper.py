@@ -222,10 +222,6 @@ def get_net_policy(cat_policy, mouse_policy):
             net_policy.append(i)
     return net_policy
 
-# DM = Dummy -1 (Since eta value is always positive, )
-# [m1, m2, m3, c1, c2, c3] net
-# [DM, m2, m3, c1, c2, c3] cat
-# [m1, m2, m3, DM, c2, c3] mouse
 
 def get_event(net_policy, mouse_state, cat_state, eta_mouse, eta_cat):
     """
@@ -290,7 +286,6 @@ def update_t(t_table, old_state, new_state, event, r2, alpha, gamma, is_mouse):
         alpha (float): The learning rate.
         gamma (float): The discount factor.
         is_mouse (bool): Flag indicating whether the local agent is a mouse or not.
-
     """
     
     if is_mouse and event not in MOUSE_OBSERVABLE_EVENTS:
@@ -366,7 +361,6 @@ def update_eta_cat(eta_cat, state, event, delta):
     eta_cat[state, event_index] = new_event_eta
     
 
-
 def update_Q(q_table, T_table, R1_table, eta_table, state, policy_num):
     """
     Updates the Q-table for a given state and control policy, refer to Equation 24 in the paper.
@@ -384,7 +378,7 @@ def update_Q(q_table, T_table, R1_table, eta_table, state, policy_num):
     q_table[state, policy_num] = R1_table[state, policy_num]+np.dot(eta_table[state], T_table[state])/eta_sum
     
 
-# Top Level Code
+#--------------Top Level Code------------------#
 env = gym.make("CatAndMouse-v0", render_mode = "human")
 
 q_mouse = np.zeros(shape=(6,2)) # 0: Disable controllable & feasible event, 1: Enable controllable & feasible event
@@ -402,7 +396,7 @@ R1_cat = np.zeros(shape=(6,2))
 eta_mouse = np.array(init_mouse_eta())
 eta_cat= np.array(init_cat_eta())
 
-epoch= 100000
+epoch= 100
 alpha = 0.1
 beta = 0.1
 gamma = 0.9
@@ -444,7 +438,7 @@ for episode in range(epoch):
             continue
         
         # Get action from net policy
-        event = get_event(net_policy, new_mouse_state, new_cat_state, eta_mouse, eta_mouse)
+        event = get_event(net_policy, new_mouse_state, new_cat_state, eta_mouse, eta_cat)
         
         # print(event)
         
@@ -488,7 +482,7 @@ for episode in range(epoch):
         
         # Updating Q
         update_Q(q_mouse, t_mouse, R1_mouse, eta_mouse, old_mouse_state, mouse_policy_num)
-        update_Q(q_cat, t_cat, R1_cat, eta_mouse, old_cat_state, cat_policy_num)
+        update_Q(q_cat, t_cat, R1_cat, eta_cat, old_cat_state, cat_policy_num)
         
         if count == 20:
             terminated = True
@@ -499,16 +493,15 @@ for i in range(6):
 
 df_mouse = pd.DataFrame(q_mouse)
 df_cat = pd.DataFrame(q_cat)
-df_eta_mouse = pd.DataFrame(eta_mouse)
-df_eta_cat = pd.DataFrame(eta_cat)
-
-df_t_mouse = pd.DataFrame(t_mouse)
-df_t_cat = pd.DataFrame(t_cat)
-
 df_mouse.to_csv("q_mouse.csv")
 df_cat.to_csv("q_cat.csv")
+
+df_eta_mouse = pd.DataFrame(eta_mouse)
+df_eta_cat = pd.DataFrame(eta_cat)
 df_eta_mouse.to_csv("eta_mouse.csv")
 df_eta_cat.to_csv("eta_cat.csv")
 
+df_t_mouse = pd.DataFrame(t_mouse)
+df_t_cat = pd.DataFrame(t_cat)
 df_t_mouse.to_csv("t_mouse.csv")
 df_t_cat.to_csv("t_cat.csv")
