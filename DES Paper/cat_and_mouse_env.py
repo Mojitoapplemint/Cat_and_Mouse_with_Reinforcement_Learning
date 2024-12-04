@@ -25,6 +25,18 @@ class CatAndMouseEnv(gym.Env):
         self.render_mode = render_mode
     
     def update_door(self, event, disabled):
+        """
+        Updates the state of doors. Enables the door for parameter "event" and disables the doors for the events in the "disabled" list.
+        
+        If the door that each supervisor can control is disabled, then the supervisor gets a reward of -2.
+        
+        Args:
+            event (str): The event to be enabled.
+            disabled (list of str): List of events to be disabled.
+        Returns:
+            tuple: A tuple containing the mouse reward and the cat reward after updating the doors.
+        """
+        
         #Change Disbled 
         cat_reward = 0
         mouse_reward = 0
@@ -45,6 +57,17 @@ class CatAndMouseEnv(gym.Env):
         return mouse_reward, cat_reward
         
     def cat_move(self, event):
+        """
+        Moves the cat to the next position based on whether the door for the next room is opened, or not.
+        
+        If the door is opened, the cat moves to the next room and supervisor get areward of 1, 
+        otherwise the cat stays in the same room and supervisor get areward of 0.
+        
+        Args:
+            event (str): The event that triggers the cat's movement. Expected values are "c1", "c2", or "c3".
+        Returns:
+            int: Returns 1 if the cat moves to the next position, otherwise returns 0.
+        """
         
         if self.cat_position == 3:
             required_event = "c3"
@@ -64,6 +87,17 @@ class CatAndMouseEnv(gym.Env):
             
     
     def mouse_move(self, event):
+        """
+        Moves the mouse to the next position based on whether the door for the next room is opened, or not.
+        
+        If the door is opened, the mouse moves to the next room and supervisor get areward of 1, 
+        otherwise the mouse stays in the same room and supervisor get areward of 0.
+        
+        Args:
+            event (str): The event that triggers the mouse movement. Expected values are "m1", "m2", or "m3".
+        Returns:
+            int: Returns 1 if the mouse position is updated successfully, otherwise returns 0.
+        """
         
         if self.mouse_position == 1:
             required_event = "m2"
@@ -86,33 +120,32 @@ class CatAndMouseEnv(gym.Env):
         """
         Reset the environment to its initial state.
         Returns:
-            np.ndarray: The initial state of the doors.
-            dict: A dictionary containing the initial positions of the cat and mouse.
+            list: [cat position, mouse position].
+            dict: A dictionary containing the current status for each door, in a single list.
         """
         self.cat_position = 4
         self.mouse_position = 2
-        self.doors = np.ones(shape=(6,), dtype=np.int32) #[m1, m2, m3, c1, c2, c3]
+        self.doors = np.ones(shape=(6,), dtype=np.int32)
         
         observation = np.array([self.mouse_position, self.cat_position])
         info = {"doors": self.doors}
         return observation, info
     
     
-    '''
-        1 = Enable = open
-        0 = Disable = close
-    '''
     def step(self, events):
         """
-        Take a step in the environment with the given actions for the cat and mouse.
+        Takes information of doors that are planning to be opened or closed, updates the environment,
+        and returns numerical rewards with the updated observation, (cat position, mouse position).
+        
         Args:
-            cat_action (dict): The action for the cat.
-            mouse_action (dict): The action for the mouse.
+            events (tuple): A tuple containing the event planning to be enabled, and list of events planning to be disbled.
         Returns:
-            tuple: A tuple containing the observations for the cat and mouse.
-            tuple: A tuple containing the rewards for the cat and mouse.
-            bool: Whether the episode has terminated.
-            dict: A dictionary containing the positions of the cat and mouse.
+            tuple: A tuple containing:
+                - np.array: The current positions of the mouse and the cat.
+                - tuple: Rewards for the mouse and the cat from the door update and their movements.
+                - bool: A flag indicating if the episode has terminated.
+                - bool: A flag indicating if the episode was truncated (always False in this case).
+                - dict: Additional information about the environment (e.g., doors status).
         """
         
         terminated = False
