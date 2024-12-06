@@ -406,6 +406,7 @@ delta = 0.1
 epsilon = 0.9
 
 train_count=[0,0,0,0,0,0]
+disable_count=[0,0,0,0,0,0]
 
 for episode in range(epoch):
     if (episode%100==0):
@@ -448,6 +449,10 @@ for episode in range(epoch):
         
         # Get Feasible event at current state that is not included in net_policy
         disabled = get_disabled_event(net_policy, observation)
+        
+        for event in disabled:
+            disable_count[EVENTS.index(event)] +=1
+            
         
         # print(observation)
         # print(mouse_policy)
@@ -492,8 +497,14 @@ for episode in range(epoch):
             terminated = True
         count +=1
 
+print("Training Counts")
 for i in range(6):
     print(f"{EVENTS[i]}: {train_count[i]}")
+
+print()
+print("Disabling Counts")
+for i in range(6):
+    print(f"{EVENTS[i]}: {disable_count[i]}")
 
 df_mouse = pd.DataFrame(q_mouse)
 df_cat = pd.DataFrame(q_cat)
