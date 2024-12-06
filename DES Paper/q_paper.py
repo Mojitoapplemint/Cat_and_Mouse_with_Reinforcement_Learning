@@ -103,7 +103,7 @@ def init_mouse_eta():
     """
     Gives the initial eta table for mouse
     """
-                   #[m1 , m2 , m3,  c2 , c3]
+                   #[m1 , m2 , m3 , c2 , c3]
     init_mouse_eta=[[0.0, 0.5, 0.0, 0.0, 0.5],
                     [0.0, 0.5, 0.0, 0.5, 0.0],
                     [0.5, 0.0, 0.0, 0.0, 0.5],
@@ -150,6 +150,7 @@ def cat_observation_to_state(observation):
     """
     return CAT_STATES.get(tuple(observation))
 
+
 def get_mouse_policy(q_mouse, curr_state, observation, epsilon)->list:
     """
     Determines the policy for the mouse based on the Q-values and the current state.
@@ -176,6 +177,7 @@ def get_mouse_policy(q_mouse, curr_state, observation, epsilon)->list:
         policy = ["c1", "c2", "c3"]
     
     return policy, policy_num
+
 
 def get_cat_policy(q_cat, curr_state, observation,  epsilon)->list:
     """
@@ -396,12 +398,12 @@ R1_cat = np.zeros(shape=(6,2))
 eta_mouse = np.array(init_mouse_eta())
 eta_cat= np.array(init_cat_eta())
 
-epoch= 100
+epoch= 1000
 alpha = 0.1
 beta = 0.1
 gamma = 0.9
 delta = 0.1
-epsilon = 0.8
+epsilon = 0.9
 
 train_count=[0,0,0,0,0,0]
 

@@ -160,8 +160,8 @@ class CatAndMouseEnv(gym.Env):
         
         if self.cat_position == 3 and self.mouse_position == 3:
             terminated = True
-            cat_r2 = -10
-            mouse_r2 = -10
+            cat_r2 = -100
+            mouse_r2 = -100
         
         info = {"doors":self.doors}
 
