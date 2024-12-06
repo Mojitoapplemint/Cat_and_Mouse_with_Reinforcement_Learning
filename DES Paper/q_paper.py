@@ -483,8 +483,10 @@ for episode in range(epoch):
         update_eta_cat(eta_cat, old_cat_state, event, delta)
         
         # Updating Q
-        update_Q(q_mouse, t_mouse, R1_mouse, eta_mouse, old_mouse_state, mouse_policy_num)
-        update_Q(q_cat, t_cat, R1_cat, eta_cat, old_cat_state, cat_policy_num)
+        if event in MOUSE_OBSERVABLE_EVENTS:
+            update_Q(q_mouse, t_mouse, R1_mouse, eta_mouse, old_mouse_state, mouse_policy_num)
+        if event in CAT_OBSERVABLE_EVENTS:
+            update_Q(q_cat, t_cat, R1_cat, eta_cat, old_cat_state, cat_policy_num)
         
         if count == 20:
             terminated = True
