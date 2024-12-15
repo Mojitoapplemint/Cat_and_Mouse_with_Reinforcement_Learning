@@ -164,7 +164,7 @@ def get_mouse_policy(q_mouse, curr_state, observation, epsilon)->list:
         policy_num (int): Return 1 if the policy is to enable the feasible event, otherwise 0; represents the column number of the Q-table.
     """
 
-    if np.random.random()>epsilon:
+    if np.random.random()>(1-epsilon):
         # Exploration
         policy_num = 1-np.argmax(q_mouse[curr_state])
     else:
@@ -193,7 +193,7 @@ def get_cat_policy(q_cat, curr_state, observation,  epsilon)->list:
         policy_num (int): Return 1 if the policy is to enable the feasible event, otherwise 0; represents the column number of the Q-table.
     """
     
-    if np.random.random()>epsilon:
+    if np.random.random()>(1-epsilon):
         # Exploration
         policy_num = 1-np.argmax(q_cat[curr_state])
     else:
@@ -403,7 +403,7 @@ alpha = 0.1
 beta = 0.1
 gamma = 0.9
 delta = 0.1
-epsilon = 0.9
+epsilon = 0.1
 
 train_count=[0,0,0,0,0,0]
 disable_count=[0,0,0,0,0,0]
